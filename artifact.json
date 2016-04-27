@@ -1,0 +1,30 @@
+{
+  "name": "Job4Joy Bot",
+  "description": "find work & hire freelancers",
+  "key": "com.job4joy.Job4JoyBot",
+  "links": {
+    "homepage": "https://job4joy.com",
+    "self": "https://job4joy.com/apps/hipchat/artifact.json"
+  },
+  "capabilities": {
+    "hipchatApiConsumer": {
+      "scopes": [
+        "send_notification"
+      ]
+    },
+
+    "webhook": {
+      "url": "https://job4joy.com/apps/hipchat/",
+      "pattern": ".*",
+      "event": "room_message",
+      "authentication": "jwt",
+      "name": "Job4JoyBot"
+    },
+
+    "installable": {
+      "allowGlobal": true,
+      "allowRoom": true,
+      "callbackUrl": "https://job4joy.com/apps/hipchat/installed/"
+    }
+  }
+}
