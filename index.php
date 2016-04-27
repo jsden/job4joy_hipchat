@@ -18,15 +18,15 @@ $data = json_decode(file_get_contents("php://input"), true);
 if (!empty($data['item']))
 {
 
-    $groupToken = require 'data/'.$data['oauth_client_id'].'_token.php';
+    $token = require 'data/'.$data['oauth_client_id'].'_token.php';
 
     // Check Token expiration
-    if(time() > $groupToken['expires_in'])
+    if(time() > filemtime('data/'.$data['oauth_client_id'].'_token.php')+ $token['expires_in'])
     {
         // request new token
         $groupConfig = require 'data/'.$data['oauth_client_id'].'.php';
         $token = Job4JoyBot::requestToken($groupConfig['oauthId'], $groupConfig['oauthSecret'], $groupConfig['capabilitiesUrl']);
-        file_put_contents(__DIR__. '/../data/'.$groupConfig['oauthId'].'_token.php', "<?php\nreturn " . var_export($token, true) . ";\n");
+        file_put_contents(__DIR__. '/../data/'.$groupConfig['oauthId'].'_token.php', "<?php\nreturn " . var_export(json_decode($token, true), true) . ";\n");
     }
 
     $auth = new OAuth2($token['access_token']);
@@ -35,11 +35,11 @@ if (!empty($data['item']))
 
     if (!empty($config['feeds'][$data['item']['message']['message']]))
     {
-        getFeed($config['feeds'][$data['item']['message']['message']], $roomAPI);
+        getFeed($config['feeds'][$data['item']['message']['message']], $data['item']['room']['id'], $roomAPI);
     }
     else
     {
-        sendHelpMessage($roomAPI);
+        sendHelpMessage($data['item']['room']['id'], $roomAPI);
     }
 }
 
@@ -47,18 +47,21 @@ function sendHelpMessage($room_id, $bot)
 {
     global $config;
 
-    $message = "Hello! I can help you with IT projects.<br /><br />";
+    $message = "Hello! I can help you with IT projects.<br />";
 
     foreach ($config['feeds'] as $alias => $item) {
-        $message.= '<br /> '.$item['Title']." - just type ".$alias;
+        $message.= '<br /> <strong>'.$alias . "</strong> - ". $item['Title'];
     }
 
-    return $bot->sendRoomNotification($room_id, new Message([
+    $msgObj = new Message([
+        'from' => '',
         'message' => $message,
         'color' => 'green',
-        'messageFormat' => 'html',
-        'notify' => 1
-    ]));
+        'messageFormat' => 'html'
+    ]);
+    $msgObj->setNotify(true);
+
+    return $bot->sendRoomNotification($room_id, $msgObj);
 }
 
 function getFeed($feed, $room_id, $bot)
@@ -80,24 +83,43 @@ function getFeed($feed, $room_id, $bot)
                 $url = $googl->shorten($itm->getUrl());
                 $message = substr(strip_tags($itm->getContent()), 0, 150);
 
-                $bot->sendRoomNotification($room_id, new Message([
-                    'message' => '<strong>".$itm->getTitle() . "</strong><br />'.$message.'<br /><a href="'.$url->id.'">'.$url->id.'</a>',
-                    'color' => 'red',
+                $msgObj = new Message([
+                    'from' => '',
+                    'message' => '<a href="'.$url->id.'"><strong>'.$itm->getTitle() . '</strong></a><br />'.$message.'<br /><a href="'.$url->id.'">'.$url->id.'</a>',
+                    'color' => 'green',
                     'messageFormat' => 'html',
-                    'notify' => 1
-                ]));
+                ]);
+                $msgObj->setNotify(true);
+
+                $bot->sendRoomNotification($room_id, $msgObj);
             }
         } else {
 
-            $bot->sendRoomNotification($room_id, new Message([
+            $msgObj = new Message([
+                'from' => '',
                 'message' => 'New projects not a found!',
                 'color' => 'red',
-                'messageFormat' => 'text',
-                'notify' => 1
-            ]));
+                'messageFormat' => 'html',
+            ]);
+            $msgObj->setNotify(true);
+
+            $bot->sendRoomNotification($room_id, $msgObj);
         }
     }
-    catch (Exception $e) {}
+    catch (Exception $e) {
+        writeToLog($e->getErrors(), "EXCEPTION");
+    }
 
+    return true;
+}
+
+function writeToLog($data, $title = '')
+{
+    $log = "\n------------------------\n";
+    $log .= date("Y.m.d G:i:s") . "\n";
+    $log .= (strlen($title) > 0 ? $title : 'DEBUG') . "\n";
+    $log .= print_r($data, 1);
+    $log .= "\n------------------------\n";
+    file_put_contents(__DIR__ . '/imbot.log', $log, FILE_APPEND);
     return true;
 }
