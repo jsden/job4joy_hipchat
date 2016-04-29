@@ -1,7 +1,7 @@
 {
   "name": "Job4Joy Bot",
   "description": "find work & hire freelancers",
-  "key": "com.job4joy.Job4JoyBot",
+  "key": "com.job4joy.Job4Joy",
   "links": {
     "homepage": "https://job4joy.com",
     "self": "https://job4joy.com/apps/hipchat/artifact.json"
